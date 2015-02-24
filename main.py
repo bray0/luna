@@ -49,7 +49,7 @@ class Window(wx.Frame):
         mainFont = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
         
         self.panel = wx.Panel(self, -1, (120, 130), (350, 250), style=wx.SUNKEN_BORDER)
-        self.panel2 = wx.Panel(self, -1, (25, 400), (580, 350), style=wx.SUNKEN_BORDER)
+        self.panel2 = wx.Panel(self, -1, (25, 400), (584, 348), style=wx.SUNKEN_BORDER)
         #self.panel3 = wx.Panel(self, -1, (610, 60), (635, 690), style=wx.SUNKEN_BORDER)
         #self.panel3.SetBackgroundColour(wx.WHITE)
         
@@ -121,14 +121,7 @@ class Window(wx.Frame):
         
         self.fSize = wx.StaticText(self.panel2, label='-', pos=(120, 300))
         
-        
-        #====================================================
-        #     Sliders
-        #====================================================
-        #                             def min max
-        #slider = wx.Slider(self, -1, 50, 1, 100, pos=(80, 450), size=(250, -1), style=wx.SL_AUTOTICKS)
-        #slider.SetTickFreq(5, 1)
-        
+                
         #=======================================================
         #   statusbus
         #=======================================================
@@ -147,17 +140,13 @@ class Window(wx.Frame):
     def fillTable(self):
         for i in self.globalList:
             index = self.list.InsertStringItem(sys.maxint, i[0])
-            self.list.SetStringItem(index, 1, i[1])
-            
+            self.list.SetStringItem(index, 1, i[1].decode('utf8', 'ignore'))
+        
     def getExif(self, fileName):
         data = metainfo.get_exif(fileName)
         newlist = metainfo.dataToList(data)
         return newlist
     
-    def openHtmlPage(self, fileName):
-        page = open(fileName, 'r')
-        data = page.read()
-        return data
                 
     def OnAboutBox(self, e):
         description = """Luna forensic is a unix based forensic tool that include inbuilt
@@ -183,14 +172,15 @@ class Window(wx.Frame):
         
         if dialog.ShowModal() == wx.ID_OK:
             self.picturePath = dialog.GetPath() 
+            self.StatusBar.SetStatusText(self.picturePath)
         dialog.Destroy()
         self.onView()
         self.calculateChecksum()
         self.displayMtimes()
         self.displaySize()
+        self.list.DeleteAllItems()
         self.globalList = self.getExif(self.picturePath)
         self.fillTable()
-        
         
     def calculateChecksum(self):
         filepath = self.picturePath
