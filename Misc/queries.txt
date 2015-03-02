@@ -22,13 +22,41 @@ CHROME
 ############################################
 #      URL HISTORY
 ############################################
+SELECT urls.visit_count, datetime(((visits.visit_time/1000000)-11644473600), "unixepoch"), urls.url FROM urls, visits WHERE urls.id = visits.url;
 
 
 ############################################
 #      Popular Sites
 ############################################
 
+SELECT urls.visit_count, datetime(((visits.visit_time/1000000)-11644473600), "unixepoch"), urls.url FROM urls, visits WHERE urls.id = visits.url ORDER BY urls.visit_count DESC
 
 ############################################
 #      Least Popular
+############################################
+SELECT urls.visit_count, datetime(((visits.visit_time/1000000)-11644473600), "unixepoch"), urls.url FROM urls, visits WHERE urls.id = visits.url ORDER BY urls.visit_count ASC
+
+############################################
+Downloads
+############################################
+SELECT datetime(((downloads.start_time/1000000)-11644473600), "unixepoch"), downloads.received_bytes, downloads.total_bytes, downloads.target_path, downloads_url_chains.url FROM downloads, downloads_url_chains WHERE downloads.id = downloads_url_chains.id
+
+datetime
+receivedBytes
+totalbytes
+targetPath
+urlpath
+############################################
+
+############################################
+COOKIES
+############################################
+SELECT datetime(((cookies.creation_utc/1000000)-11644473600), "unixepoch"), cookies.host_key, datetime(((cookies.expires_utc/1000000)-11644473600), "unixepoch"), cookies.secure, cookies.httponly, datetime(((cookies.last_access_utc/1000000)-11644473600), "unixepoch"), cookies.has_expires FROM cookies
+Creation date
+Url Host
+Expiry date
+Is Secure
+Is HttpOnly
+Last Access
+Has Expiry
 ############################################
