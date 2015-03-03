@@ -195,22 +195,27 @@ class Window(wx.Frame):
         
         if self.browseStatus:
             if textItem == "F History":
-                self.list.DeleteAllItems()
+                self.selfListCtrl()
                 filename = self.filePath.split('/')[-1]
                 if filename == "places.sqlite":
                     data = self.databaseHistory(self.filePath)
                     self.fillInData(self.filePath, data)
             if textItem == "F Cookies":
-                self.list.DeleteAllItems()
+                self.selfListCookieCtrl()
+                filename = self.filePath.split('/')[-1]
+                if filename == 'cookies.sqlite':
+                    data = self.firefoxCookies(self.filePath)
+                    self.fillinCookies(self.filePath, data)
             if textItem == "F Downloads":
                 self.list.DeleteAllItems()
             if textItem == "F High Hits":
+                self.selfListCtrl()
                 filename = self.filePath.split('/')[-1]
                 if filename == "places.sqlite":
                     data = self.databasePopular(self.filePath)
                     self.fillInData(self.filePath, data)
             if textItem == "F Low Hits":
-                self.list.DeleteAllItems()
+                self.selfListCtrl()
                 filename = self.filePath.split('/')[-1]
                 if filename == "places.sqlite":
                     data = self.databaseLessPopular(self.filePath)
@@ -315,6 +320,13 @@ class Window(wx.Frame):
         row = cur.fetchall()
         return row 
     
+    def firefoxCookies(self, filename):
+        con = lite.connect(filename)
+        cur = con.cursor()
+        statement = 'SELECT datetime(creationTime/1000000, "unixepoch"), baseDomain, datetime(expiry/1000000, "unixepoch"), isSecure, isHttpOnly, datetime(lastAccessed/1000000, "unixepoch") FROM moz_cookies'
+        cur.execute(statement)
+        row = cur.fetchall()
+        return row
     def googleCookies(self, filename):
         con = lite.connect(filename)
         cur = con.cursor()
