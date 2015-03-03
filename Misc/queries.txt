@@ -15,7 +15,14 @@ SELECT moz_places.visit_count, datetime(moz_historyvisits.visit_date/1000000, 'u
 ############################################
 SELECT moz_places.visit_count, datetime(moz_historyvisits.visit_date/1000000, 'unixepoch', 'localtime'), moz_places.url FROM moz_places, moz_historyvisits WHERE moz_places.id = moz_historyvisits.place_id ORDER BY moz_places.visit_count ASC;
 
+############################################
+       Cookies
+############################################
 
+#############################################
+       DOWNLOADS
+#############################################
+SELECT a.content, b.content, c.content FROM moz_annos a, moz_annos b, moz_annos c WHERE a.place_id = b.place_id and b.place_id = c.place_id and a.anno_attribute_id = 10 and b.anno_attribute_id = 11 and c.anno_attribute_id = 12
 
 
 CHROME

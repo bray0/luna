@@ -6,6 +6,8 @@ from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 import wx.lib.scrolledpanel as scrolled
 import sqlite3 as lite
 import os
+import ast
+import time
 
 class AutoWidthListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
     def __init__(self, parent):
@@ -141,6 +143,32 @@ class Window(wx.Frame):
         self.hbox2.Add(self.list, 1, wx.EXPAND|wx.ALL)
         
         self.panel2.SetSizer(self.hbox2)
+        
+    def selfListDownload(self):
+        self.panel2 = scrolled_panel = scrolled.ScrolledPanel(parent=self, id=-1, style=wx.SUNKEN_BORDER)
+        self.panel2.SetPosition((152, 2))
+        self.panel2.SetSize((825, 552))
+        scrolled_panel.SetBackgroundColour(wx.WHITE)
+        scrolled_panel.SetupScrolling()
+        
+        #============================================================
+        #                 LISTCtrl
+        #============================================================
+        self.hbox2 = wx.BoxSizer(wx.HORIZONTAL)
+        ##################################
+        #     Creating new columns
+        ##################################
+        self.list = AutoWidthListCtrl(self.panel2)
+        self.list.InsertColumn(0, 'Target Path', width=280)
+        self.list.InsertColumn(1, 'File Title', width=300)
+        self.list.InsertColumn(2, 'End Time', width=160)
+        self.list.InsertColumn(3, 'File Size', width=120)
+                
+        self.list.Bind(wx.EVT_LIST_ITEM_SELECTED, self.selectedFirefoxDown)
+        
+        self.hbox2.Add(self.list, 1, wx.EXPAND|wx.ALL)
+        
+        self.panel2.SetSizer(self.hbox2)
     
     def selfListCookieCtrl(self):
         self.panel2 = scrolled_panel = scrolled.ScrolledPanel(parent=self, id=-1, style=wx.SUNKEN_BORDER)
@@ -172,6 +200,11 @@ class Window(wx.Frame):
         currentItem = event.m_itemIndex  
         rowItem = self.myRowDict[currentItem]
         self.StatusBar.SetStatusText('LOCATION PATH: => '+ rowItem[3])
+        
+    def selectedFirefoxDown(self, event):
+        currentItem = event.m_itemIndex  
+        rowItem = self.myRowDict[currentItem]
+        self.StatusBar.SetStatusText('LOCATION PATH: => '+ rowItem[0])
     
     def selectedItem(self, event):
         currentItem = event.m_itemIndex  
@@ -207,7 +240,12 @@ class Window(wx.Frame):
                     data = self.firefoxCookies(self.filePath)
                     self.fillinCookies(self.filePath, data)
             if textItem == "F Downloads":
-                self.list.DeleteAllItems()
+                self.selfListDownload()
+                filename = self.filePath.split('/')[-1]
+                if filename == 'places.sqlite':
+                    data = self.getDownloadData(self.filePath)
+                    self.fillInFirefoxDownloads(self.filePath, data)
+                    
             if textItem == "F High Hits":
                 self.selfListCtrl()
                 filename = self.filePath.split('/')[-1]
@@ -304,6 +342,16 @@ class Window(wx.Frame):
             self.list.SetStringItem(index, 4, i[4].decode('utf8', 'ignore'))
             self.myRowDict[index] = i 
             
+    def fillInFirefoxDownloads(self, filepath, data):
+        self.myRowDict = {}
+        
+        for i in data:
+            index = self.list.InsertStringItem(sys.maxint, i[0])
+            self.list.SetStringItem(index, 1, i[1])
+            self.list.SetStringItem(index, 2, i[2])
+            self.list.SetStringItem(index, 3, i[3])
+            self.myRowDict[index] = i 
+            
     def googleLowHits(self, filename):
         con = lite.connect(filename)
         cur = con.cursor()
@@ -374,6 +422,40 @@ class Window(wx.Frame):
         cur.execute(statement)
         row = cur.fetchall()
         return row   
+    def getDownloadAttributes(self, filename):
+        con = lite.connect(filename)
+        cur = con.cursor()
+        statement = 'SELECT * FROM moz_anno_attributes'
+        cur.execute(statement)
+        rows = cur.fetchall()
+        
+        finalDict = {}
+        for row in rows:
+            finalDict[str(row[1])] = row[0]
+        
+        return finalDict
+    def getDownloadData(self, fileName):
+        attributes = self.getDownloadAttributes(fileName)
+        path = attributes['downloads/destinationFileURI']
+        filename = attributes['downloads/destinationFileName']
+        metadata = attributes['downloads/metaData']
+        
+        con = lite.connect(fileName)
+        cur = con.cursor()
+        statement = "SELECT a.content, b.content, c.content FROM moz_annos a, moz_annos b, moz_annos c WHERE a.place_id = b.place_id and b.place_id = c.place_id and a.anno_attribute_id = %d and b.anno_attribute_id = %d and c.anno_attribute_id = %d" % (path, filename, metadata)
+        cur.execute(statement)
+        rows = cur.fetchall()
+        finalOutput = []
+        for row in rows:
+            rowString = str(row[2])
+            newDict = ast.literal_eval(rowString)
+            endtime = newDict['endTime']
+            filesize = newDict['fileSize']
+            endtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(endtime/1000000))
+            filesize = self.bytes2Human(filesize)
+            innitLoop = [str(row[0]), str(row[1]), str(endtime), filesize]
+            finalOutput.append(innitLoop)
+        return finalOutput
         
     def OnQuit(self, event):
         self.Close()
