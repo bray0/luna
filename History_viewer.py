@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import wx 
 import sys
@@ -8,7 +9,60 @@ import sqlite3 as lite
 import os
 import ast
 import time
+import codecs
 
+class SearchDialog(wx.Dialog):
+    def __init__(self, parent, filename):
+        super(SearchDialog, self).__init__(parent)
+        self.filename = filename
+        
+        self.InitUI()
+        self.SetSize((350, 200))
+        self.SetTitle('Search History')
+        
+    def InitUI(self):
+        panel = wx.Panel(self)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        
+        sb = wx.StaticBox(panel)
+        sbs = wx.StaticBoxSizer(sb, orient=wx.VERTICAL)
+        
+        self.textBox = wx.TextCtrl(panel, size=(300,30))
+        
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        hbox1.Add(wx.StaticText(panel, label='Search'))
+        hbox1.Add(self.textBox, flag=wx.LEFT, border=5)
+        sbs.Add(hbox1)
+        
+        panel.SetSizer(sbs)
+        
+        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
+        searchButton = wx.Button(self, label='SEARCH')
+        hbox2.Add(searchButton, flag=wx.CENTER, border=5)
+        
+        vbox.Add(panel, proportion=1, flag=wx.ALL|wx.EXPAND, border=5)
+        vbox.Add(hbox2, flag=wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, border=10)
+        
+        self.SetSizer(vbox)
+    
+        searchButton.Bind(wx.EVT_BUTTON, self.OnSearch)
+        self.status = 'None'
+        
+    def OnSearch(self, e):
+        self.Destroy()
+    
+    
+    def getText(self):
+        row = None
+        filename = self.filename.split('/')[-1]
+        if filename == 'places.sqlite':
+            con = lite.connect(self.filename)
+            cur = con.cursor()
+            statement = "SELECT moz_places.visit_count, datetime(moz_historyvisits.visit_date/1000000, 'unixepoch', 'localtime'), moz_places.url FROM moz_places, moz_historyvisits WHERE moz_places.id = moz_historyvisits.place_id"
+            cur.execute(statement)
+            row = cur.fetchall()
+        return row
+    
 class AutoWidthListCtrl(wx.ListCtrl, ListCtrlAutoWidthMixin):
     def __init__(self, parent):
         wx.ListCtrl.__init__(self, parent, -1, style=wx.LC_REPORT)
@@ -23,19 +77,21 @@ class Window(wx.Frame):
         self.InitUI()
         
     def InitUI(self):
+        ID_DEPTH = wx.NewId()
         menubar = wx.MenuBar()
         file = wx.Menu()
-        Report = wx.Menu()
+        Tools = wx.Menu()
         Help = wx.Menu()
         
         file.Append(101, '&open', 'Open a history file')
         file.AppendSeparator()
         quit = wx.MenuItem(file, 105, '&Quit\tCtrl+Q', 'Quit the Application')
         file.AppendItem(quit)
-        Report.Append(201, 'Save report', 'Export info to pdf')
+        Tools.Append(201, 'Save report', 'Export info to pdf')
+        Tools.Append(ID_DEPTH, 'Search History')
         Help.Append(301, 'About Software', '')
         menubar.Append(file, '&File')
-        menubar.Append(Report, '&Report')
+        menubar.Append(Tools, '&Tools')
         menubar.Append(Help, '&Help')
         
         self.SetMenuBar(menubar)
@@ -47,6 +103,7 @@ class Window(wx.Frame):
         self.SetMinSize((980, 598))
         self.TreeUI()
         
+        self.Bind(wx.EVT_MENU, self.onSearch, id=ID_DEPTH)
         self.Bind(wx.EVT_MENU, self.OnQuit, id=105)
         self.Show(True)
     
@@ -55,8 +112,6 @@ class Window(wx.Frame):
         vbox = wx.BoxSizer(wx.VERTICAL)
         self.panel1 = wx.Panel(self, -1, (0, 0), (0, 0), style=wx.SUNKEN_BORDER)
         #self.panel2 = wx.Panel(self, -1, (0, 0), (825, 348), style=wx.SUNKEN_BORDER)
-        
-        
         
         self.tree = wx.TreeCtrl(self.panel1, 1, wx.DefaultPosition, (-1, -1), wx.TR_HIDE_ROOT|wx.TR_HAS_BUTTONS)
         root = self.tree.AddRoot('Browsers')
@@ -85,21 +140,28 @@ class Window(wx.Frame):
         #                 Binding
         #============================================================
         self.Bind(wx.EVT_MENU, self.onBrowse, id=101)
+        
         self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnSelChanged, id=1)
         
         #============================================================
         vbox.Add(self.tree, 1)
         hbox.Add(self.panel1, 1, wx.EXPAND)
-        #hbox.Add(self.panel2, 1, wx.EXPAND)
         self.panel1.SetSizer(vbox)
         self.SetSizer(hbox)
     
+    def onSearch(self, e):
+        search = SearchDialog(self)
+        search.Show()
+        
+        
     def selfListCtrl(self):
         self.panel2 = scrolled_panel = scrolled.ScrolledPanel(parent=self, id=-1, style=wx.SUNKEN_BORDER)
         self.panel2.SetPosition((152, 2))
         self.panel2.SetSize((825, 552))
         scrolled_panel.SetBackgroundColour(wx.WHITE)
         scrolled_panel.SetupScrolling()
+        
+        
         
         #============================================================
         #                 LISTCtrl
@@ -344,12 +406,12 @@ class Window(wx.Frame):
             
     def fillInFirefoxDownloads(self, filepath, data):
         self.myRowDict = {}
-        
+        toUtf8 = codecs.getdecoder('utf8')
         for i in data:
-            index = self.list.InsertStringItem(sys.maxint, i[0])
-            self.list.SetStringItem(index, 1, i[1])
-            self.list.SetStringItem(index, 2, i[2])
-            self.list.SetStringItem(index, 3, i[3])
+            index = self.list.InsertStringItem(sys.maxint, i[0].encode('utf8'))
+            self.list.SetStringItem(index, 1, i[1].encode('utf8').decode('utf8'))
+            self.list.SetStringItem(index, 2, str(i[2]))
+            self.list.SetStringItem(index, 3, str(i[3]))
             self.myRowDict[index] = i 
             
     def googleLowHits(self, filename):
@@ -453,7 +515,7 @@ class Window(wx.Frame):
             filesize = newDict['fileSize']
             endtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(endtime/1000000))
             filesize = self.bytes2Human(filesize)
-            innitLoop = [str(row[0]), str(row[1]), str(endtime), filesize]
+            innitLoop = [row[0], row[1], str(endtime), str(filesize)]
             finalOutput.append(innitLoop)
         return finalOutput
         
